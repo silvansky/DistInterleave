@@ -109,5 +109,5 @@ controls, routing, targets, or build commands change.
 
 Implement the interleave algorithm independently. Do not copy, translate, or link
 CDP source code. The existing LookAndFeel files are reused under VarispeedDelay's
-MIT option; preserve `VARISPEED-LICENSE.txt`. JUCE and its bundled dependencies
+MIT option; preserve `LICENSE.txt`. JUCE and its bundled dependencies
 retain their own licenses and notices.

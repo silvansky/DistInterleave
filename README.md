@@ -175,6 +175,6 @@ Build products and fetched dependencies stay under the ignored `build/` director
 
 The palette, typography, knobs, and control styling follow VarispeedDelay's
 `STYLE.md`. `src/LookAndFeel.h` and `.cpp` are reused from that project under its
-MIT option; the required notice is in `VARISPEED-LICENSE.txt`.
+MIT option; the required notice is in `LICENSE.txt`.
 JUCE and its bundled dependencies retain their own licenses; see the pinned
 JUCE checkout's `LICENSE.md` for its AGPL/commercial licensing options.
