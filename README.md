@@ -102,6 +102,25 @@ stereo-to-stereo, each with disabled, mono, or stereo sidechain.
 macOS bundles receive an ad-hoc signature for local use. Developer ID signing and
 notarization are separate release steps.
 
+To install the AU locally and validate host discovery, quit your DAW and run:
+
+```sh
+./install-au.sh
+```
+
+Like VarispeedDelay's installer, this signs the Release component, copies it into
+`~/Library/Audio/Plug-Ins/Components`, refreshes the current user's audio component
+registrar, and runs Apple's `auval` with the identity from the bundle. Use
+`./install-au.sh --system` to install into `/Library/Audio/Plug-Ins/Components`
+instead (requires sudo). Reopen your DAW and rescan Audio Units if needed. Building
+alone does not install the AU, and the direct-load smoke test below does not check
+host discovery. Native builds contain only the build machine's architecture; use
+the universal build option above for Intel or Rosetta hosts on Apple Silicon.
+
+In JUCE AudioPluginHost, use **Options > Edit the List of Available Plug-ins...**,
+then **Options... > Scan for new or updated AudioUnit plug-ins**. Scanning the
+VST3 build does not add the AU version to that list.
+
 The standalone has a routing selector and mono/stereo output selector above the
 editor. Use **Audio settings** to choose the device and enable up to four input
 channels. Routing maps the first enabled hardware channel(s) to main input and
