@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(DistInterleave VERSION 0.1.0 LANGUAGES C CXX)
+project(DistInterleave VERSION 0.1.1 LANGUAGES C CXX)
 
 set(JUCE_SOURCE_DIR "" CACHE PATH "Existing JUCE checkout (optional)")
 if(JUCE_SOURCE_DIR)
@@ -38,6 +38,7 @@ target_sources(DistInterleave PRIVATE ${effect_sources})
 target_include_directories(DistInterleave PUBLIC src)
 target_compile_features(DistInterleave PUBLIC cxx_std_20)
 target_compile_definitions(DistInterleave PUBLIC
+    DISTINTERLEAVE_VERSION="${PROJECT_VERSION}"
     JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(DistInterleave PRIVATE juce::juce_audio_utils
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
@@ -53,7 +54,8 @@ juce_add_gui_app(DistInterleave_Standalone
 target_sources(DistInterleave_Standalone PRIVATE src/Standalone.cpp ${effect_sources})
 target_include_directories(DistInterleave_Standalone PRIVATE src)
 target_compile_features(DistInterleave_Standalone PRIVATE cxx_std_20)
-target_compile_definitions(DistInterleave_Standalone PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_compile_definitions(DistInterleave_Standalone PRIVATE
+    DISTINTERLEAVE_VERSION="${PROJECT_VERSION}" JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 target_link_libraries(DistInterleave_Standalone PRIVATE juce::juce_audio_utils
     juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 

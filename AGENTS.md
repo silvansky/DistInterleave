@@ -58,7 +58,7 @@ semantics before changing behavior.
   controls. Use palette/font helpers in `LookAndFeel.h`; keep the editor's fixed
   design coordinates and scale the surface when resizing.
 - Keep controls accessible through typed values, double-click reset, shift-drag
-  fine adjustment, and tooltips. Check disabled controls and mono layouts.
+  fine adjustment, and contextual footer help. Check disabled controls and mono layouts.
 
 ## Build and verify
 

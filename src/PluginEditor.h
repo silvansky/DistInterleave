@@ -24,15 +24,20 @@ public:
     ~DistInterleaveEditor() override;
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseEnter(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
+    std::function<juce::String()> audioDeviceName;
 private:
     void timerCallback() override;
     void updateRouting();
+    void updateStatus();
     DistInterleaveProcessor& effectProcessor;
     VarispeedLookAndFeel look;
     juce::Component surface;
     juce::ComboBox mode, channels;
     FineSlider cycles, gain, mix;
-    juce::TooltipWindow tooltip {this, 600};
+    juce::Label helpMark, contextHelpLabel;
+    juce::Component::SafePointer<juce::Component> hoveredHelp;
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ComboAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     std::unique_ptr<ComboAttachment> modeAttachment, channelsAttachment;

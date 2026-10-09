@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
 #include "LookAndFeel.h"
 
 class StandaloneContent final : public juce::Component, private juce::AudioIODeviceCallback
@@ -35,13 +36,18 @@ public:
         routing.addItem("Stereo + stereo SC (1-2 / 3-4)", 5);
         routing.setSelectedId(1, juce::dontSendNotification);
         routing.onChange = [this] { configureRouting(); };
-        routing.setTooltip("Input numbers refer to enabled hardware channels. Enable sidechain channels in Audio settings.");
         addAndMakeVisible(outputs);
         outputs.addItem("Mono out", 1);
         outputs.addItem("Stereo out", 2);
         outputs.setSelectedId(2, juce::dontSendNotification);
         outputs.onChange = [this] { configureRouting(); };
-        editor.reset(processor.createEditor());
+        auto* pluginEditor = new DistInterleaveEditor(processor);
+        pluginEditor->audioDeviceName = [this]
+        {
+            if (auto* device = devices.getCurrentAudioDevice()) return device->getName();
+            return juce::String();
+        };
+        editor.reset(pluginEditor);
         addAndMakeVisible(*editor);
         editor->setResizable(false, false);
         addAndMakeVisible(status);
@@ -139,7 +145,7 @@ class DistInterleaveApplication final : public juce::JUCEApplication
 {
 public:
     const juce::String getApplicationName() override { return "DistInterleave"; }
-    const juce::String getApplicationVersion() override { return "0.1.0"; }
+    const juce::String getApplicationVersion() override { return DISTINTERLEAVE_VERSION; }
     void initialise(const juce::String& arguments) override
     {
         window = std::make_unique<Window>(getApplicationName(), juce::Colour(vspd::col::background),

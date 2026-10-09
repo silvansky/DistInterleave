@@ -32,7 +32,10 @@ instance is mono, but the DSP and editor always force In/Sidechain in that layou
 Gain applies after the dry/wet blend. There is no saturation, limiter, soft clip,
 or hard clip in the DSP; output can exceed +/-1. Gain and Mix changes ramp over
 10 ms. Controls support typed values, double-click reset, shift-drag fine adjustment,
-and tooltips. All five parameters are automatable and saved in plugin state.
+and contextual help in the footer when hovered, without popup tooltips. Hover the
+footer's `?` for sample rate, block size, block duration, version, and build date
+(plus the audio device in the standalone). All five parameters are automatable
+and saved in plugin state.
 
 ## Live cycle handling
 
@@ -148,6 +151,9 @@ For an offscreen UI preview:
 ```sh
 cmake --build build --target DistInterleaveShot --parallel 6
 ./build/DistInterleaveShot /tmp/DistInterleave.png
+# Preview mono routing or footer help at a control's design coordinates:
+./build/DistInterleaveShot /tmp/DistInterleave-mono.png mono
+./build/DistInterleaveShot /tmp/DistInterleave-help.png stereo 636 315
 ```
 
 Tests cover full-cycle concatenation and group sizes, stereo frame preservation,
