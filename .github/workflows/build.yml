@@ -72,7 +72,7 @@ jobs:
             "build/DistInterleave_Standalone_artefacts/Release/DistInterleave.app:Standalone"; do
             src="${pair%:*}"
             label="${pair##*:}"
-            lipo -verify_arch arm64 x86_64 "$src/Contents/MacOS/DistInterleave"
+            lipo "$src/Contents/MacOS/DistInterleave" -verify_arch arm64 x86_64
             codesign --force --deep --sign - --timestamp=none "$src"
             codesign --verify --deep --strict "$src"
             ditto -c -k --sequesterRsrc --keepParent \
