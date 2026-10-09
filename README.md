@@ -1,10 +1,14 @@
 # DistInterleave
 
+[![KVR](https://img.shields.io/badge/KVR-DistInterleave-e07b39)](https://www.kvraudio.com/product/distinterleave-by-valentine-silvansky)
+
 JUCE audio effect for VST3, Audio Unit (macOS), and standalone. Alternates groups of
 pseudo-wave cycles from two live sources. DSP is independently implemented from
 the algorithm description; no CDP source code is copied, translated, or linked.
 
 ![DistInterleave editor](docs/preview.png)
+
+[Demo video](https://youtu.be/RSmhS3QJX5I)
 
 ## Controls
 
