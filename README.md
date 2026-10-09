@@ -65,6 +65,22 @@ The engine preallocates its storage in `prepareToPlay`. Capture and playback use
 buffer-index swaps: no audio-thread allocation, file I/O, locking, or whole-group
 copies. The two independent stereo lanes use at most about 9.2 MB at 48 kHz.
 
+## Downloads and releases
+
+Prebuilt binaries are on the [releases page](https://github.com/silvansky/DistInterleave/releases):
+
+- macOS universal (Apple Silicon and Intel): AU, VST3, and standalone, in separate ZIPs.
+- Windows x64: VST3 and standalone, in separate ZIPs.
+
+macOS downloads are ad-hoc signed and are not Developer ID signed or notarized.
+
+[GitHub Actions](https://github.com/silvansky/DistInterleave/actions/workflows/build.yml)
+builds and tests both platforms on pushes to `main`, pull requests, and manual runs.
+To publish a release, set the version in `CMakeLists.txt`, commit it, and push a
+matching tag (for example, `v0.1.0`). The tag must match the project version.
+Once both platforms pass, the workflow uploads all five ZIPs and publishes the
+GitHub release. Regular builds retain the ZIPs as workflow artifacts.
+
 ## Build
 
 Requires CMake 3.22+, C++20, and a supported JUCE platform toolchain (Xcode command

@@ -1,0 +1,124 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-14
+          - name: Windows
+            os: windows-2022
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version
+        id: ver
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          v=$(sed -n 's/^project(DistInterleave VERSION \([0-9.]*\) .*/\1/p' CMakeLists.txt)
+          test -n "$v"
+          if [[ "$REF_TYPE" == tag && "$TAG" != "v$v" ]]; then
+            echo "Tag $TAG does not match project version $v" >&2
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Configure (macOS)
+        if: runner.os == 'macOS'
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
+          -DBUILD_TESTING=ON
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -A x64 -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          V: ${{ steps.ver.outputs.version }}
+        run: |
+          mkdir -p artifacts
+          for pair in \
+            "build/DistInterleave_artefacts/Release/AU/DistInterleave.component:AU" \
+            "build/DistInterleave_artefacts/Release/VST3/DistInterleave.vst3:VST3" \
+            "build/DistInterleave_Standalone_artefacts/Release/DistInterleave.app:Standalone"; do
+            src="${pair%:*}"
+            label="${pair##*:}"
+            lipo -verify_arch arm64 x86_64 "$src/Contents/MacOS/DistInterleave"
+            codesign --force --deep --sign - --timestamp=none "$src"
+            codesign --verify --deep --strict "$src"
+            ditto -c -k --sequesterRsrc --keepParent \
+              "$src" "artifacts/DistInterleave-$V-macOS-$label.zip"
+          done
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          V: ${{ steps.ver.outputs.version }}
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Compress-Archive -Path "build/DistInterleave_artefacts/Release/VST3/DistInterleave.vst3" `
+            -DestinationPath "artifacts/DistInterleave-$env:V-Windows-VST3.zip"
+          Compress-Archive -Path "build/DistInterleave_Standalone_artefacts/Release/DistInterleave.exe" `
+            -DestinationPath "artifacts/DistInterleave-$env:V-Windows-Standalone.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DistInterleave-${{ matrix.name }}
+          path: artifacts/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: DistInterleave-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$REPO" --verify-tag --draft \
+                 --title "DistInterleave ${TAG#v}" --generate-notes \
+                 --notes "macOS: universal (Apple Silicon and Intel) AU, VST3, and standalone. Windows: x64 VST3 and standalone. macOS bundles are ad-hoc signed, without Developer ID notarization."
+          gh release upload "$TAG" --repo "$REPO" dist/*.zip --clobber
+          gh release edit "$TAG" --repo "$REPO" --draft=false --latest
