@@ -38,9 +38,13 @@ private:
     std::atomic<float>* cycles = nullptr;
     std::atomic<float>* gain = nullptr;
     std::atomic<float>* mix = nullptr;
+    std::atomic<float>* threshold = nullptr;
+    std::atomic<float>* silenceMode = nullptr;
     std::atomic<bool> monoInput { false }, sidechainPresent { false };
     std::array<interleave::Engine, 2> engines;
     juce::SmoothedValue<float> gainRamp, mixRamp;
     int previousRouting = -1;
+    std::array<int, 2> activityHold {};
+    int silenceHoldSamples = 1, previousActivity = -1;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DistInterleaveProcessor)
 };

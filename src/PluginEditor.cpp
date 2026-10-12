@@ -3,7 +3,7 @@
 using namespace vspd;
 namespace
 {
-constexpr int designWidth = 660, designHeight = 330;
+constexpr int designWidth = 846, designHeight = 330;
 constexpr auto defaultHint = "shift-drag fine  .  double-click reset  .  type values";
 void setHelp(juce::Component& component, const juce::String& text)
 {
@@ -24,7 +24,8 @@ DistInterleaveEditor::DistInterleaveEditor(DistInterleaveProcessor& p)
     addMouseListener(this, true);
     addAndMakeVisible(surface);
     surface.setInterceptsMouseClicks(false, true);
-    for (auto* component : std::initializer_list<juce::Component*>{&mode, &channels, &cycles, &gain, &mix})
+    for (auto* component : std::initializer_list<juce::Component*>{&mode, &channels, &cycles, &gain, &mix,
+                                                                 &threshold, &silenceMute, &silenceBypass})
         surface.addAndMakeVisible(component);
     mode.addItemList({"L/R", "In/Sidechain"}, 1);
     channels.addItemList({"Independent", "Left", "Right"}, 1);
@@ -39,15 +40,39 @@ DistInterleaveEditor::DistInterleaveEditor(DistInterleaveProcessor& p)
     setupKnob(cycles, 1.0, "Consecutive full cycles from each source before switching. Range 1-100.");
     setupKnob(gain, 1.0, "Linear output gain after the dry/wet blend. 0-2x; no limiter or clipping stage.");
     setupKnob(mix, 100.0, "Dry/wet blend. L/R dry is the mono average of both inputs.");
+    setupKnob(threshold, -90.0, "Silence threshold in dB. Either stereo channel keeps a source active. 50 ms hold.");
+    threshold.setName("Silence threshold");
     modeAttachment = std::make_unique<ComboAttachment>(p.parameters, "mode", mode);
     channelsAttachment = std::make_unique<ComboAttachment>(p.parameters, "channels", channels);
     cyclesAttachment = std::make_unique<SliderAttachment>(p.parameters, "cycles", cycles);
     gainAttachment = std::make_unique<SliderAttachment>(p.parameters, "gain", gain);
     mixAttachment = std::make_unique<SliderAttachment>(p.parameters, "mix", mix);
+    thresholdAttachment = std::make_unique<SliderAttachment>(p.parameters, "threshold", threshold);
+    silenceModeAttachment = std::make_unique<juce::ParameterAttachment>(
+        *p.parameters.getParameter("silenceMode"), [this](float value)
+        {
+            silenceMute.setToggleState(value < 0.5f, juce::dontSendNotification);
+            silenceBypass.setToggleState(value >= 0.5f, juce::dontSendNotification);
+        });
+    silenceMute.onClick = [this] { silenceModeAttachment->setValueAsCompleteGesture(0.0f); };
+    silenceBypass.onClick = [this] { silenceModeAttachment->setValueAsCompleteGesture(1.0f); };
+    silenceMute.setConnectedEdges(juce::Button::ConnectedOnRight);
+    silenceBypass.setConnectedEdges(juce::Button::ConnectedOnLeft);
+    for (auto* button : {&silenceMute, &silenceBypass})
+    {
+        button->setClickingTogglesState(true);
+        button->setRadioGroupId(1);
+    }
+    silenceMute.setTitle("Silence mode: Mute");
+    silenceBypass.setTitle("Silence mode: Bypass");
+    setHelp(silenceMute, "Mute the entire output when either source is silent, at every Mix setting.");
+    setHelp(silenceBypass, "Pass the active source directly through Gain, ignoring Mix. Both silent: mute.");
+    silenceModeAttachment->sendInitialUpdate();
     cycles.textFromValueFunction = [](double v) { return juce::String(juce::roundToInt(v)); };
     gain.textFromValueFunction = [](double v) { return juce::String(v, 2) + " x"; };
     mix.textFromValueFunction = [](double v) { return juce::String(v, 1) + " %"; };
-    for (auto* slider : {&cycles, &gain, &mix})
+    threshold.textFromValueFunction = [](double v) { return juce::String(v, 1) + " dB"; };
+    for (auto* slider : {&cycles, &gain, &mix, &threshold})
     {
         slider->valueFromTextFunction = [](const juce::String& text) { return text.getDoubleValue(); };
         slider->updateText();
@@ -68,8 +93,8 @@ DistInterleaveEditor::DistInterleaveEditor(DistInterleaveProcessor& p)
     contextHelpLabel.setText(defaultHint, juce::dontSendNotification);
     surface.addAndMakeVisible(contextHelpLabel);
     setResizable(true, true);
-    setResizeLimits(495, 248, 1320, 660);
-    getConstrainer()->setFixedAspectRatio(2.0);
+    setResizeLimits(635, 248, 1692, 660);
+    getConstrainer()->setFixedAspectRatio(static_cast<double>(designWidth) / designHeight);
     setSize(designWidth, designHeight);
     updateRouting();
     startTimerHz(15);
@@ -89,10 +114,13 @@ void DistInterleaveEditor::resized()
     mode.setBounds(24, 116, 186, 28);
     channels.setBounds(24, 192, 186, 28);
     cycles.setBounds(254, 112, 112, 142);
-    gain.setBounds(392, 112, 112, 142);
-    mix.setBounds(530, 112, 112, 142);
-    helpMark.setBounds(628, 306, 16, 18);
-    contextHelpLabel.setBounds(20, 306, 598, 18);
+    threshold.setBounds(417, 112, 112, 142);
+    silenceMute.setBounds(398, 260, 75, 24);
+    silenceBypass.setBounds(473, 260, 75, 24);
+    gain.setBounds(578, 112, 112, 142);
+    mix.setBounds(716, 112, 112, 142);
+    helpMark.setBounds(814, 306, 16, 18);
+    contextHelpLabel.setBounds(20, 306, 784, 18);
 }
 
 void DistInterleaveEditor::mouseEnter(const juce::MouseEvent& event)
@@ -179,21 +207,24 @@ void DistInterleaveEditor::paint(juce::Graphics& g)
     drawTracked(g, uiFont(10.0f, true), "DISTORT : INTERLEAVE", 24.0f, 25.0f, 3.0f);
     g.setFont(monoFont(8.0f));
     g.setColour(juce::Colour(col::dim));
-    g.drawText("v" DISTINTERLEAVE_VERSION, 550, 11, 86, 20, juce::Justification::centredRight);
+    g.drawText("v" DISTINTERLEAVE_VERSION, 736, 11, 86, 20, juce::Justification::centredRight);
     g.setColour(juce::Colour(col::divider).withAlpha(0.6f));
-    g.drawHorizontalLine(38, 0.0f, 660.0f);
-    g.drawHorizontalLine(296, 0.0f, 660.0f);
+    g.drawHorizontalLine(38, 0.0f, static_cast<float>(designWidth));
+    g.drawHorizontalLine(296, 0.0f, static_cast<float>(designWidth));
     g.drawVerticalLine(234, 52.0f, 282.0f);
     g.drawVerticalLine(380, 52.0f, 282.0f);
+    g.drawVerticalLine(566, 52.0f, 282.0f);
     g.setColour(juce::Colour(col::heading));
     drawTrackedCentred(g, uiFont(14.0f), "SOURCES", 117.0f, 77.0f, 2.6f);
     drawTrackedCentred(g, uiFont(14.0f), "CYCLES", 307.0f, 77.0f, 2.6f);
-    drawTrackedCentred(g, uiFont(14.0f), "OUTPUT", 517.0f, 77.0f, 2.6f);
+    drawTrackedCentred(g, uiFont(14.0f), "SILENCE", 473.0f, 77.0f, 2.6f);
+    drawTrackedCentred(g, uiFont(14.0f), "OUTPUT", 703.0f, 77.0f, 2.6f);
     caption(g, "Mode", 117.0f, 107.0f);
     caption(g, "Channels", 117.0f, 183.0f);
     caption(g, "per source", 310.0f, 107.0f);
-    caption(g, "Gain", 448.0f, 107.0f);
-    caption(g, "Mix", 586.0f, 107.0f);
+    caption(g, "Threshold", 473.0f, 107.0f);
+    caption(g, "Gain", 634.0f, 107.0f);
+    caption(g, "Mix", 772.0f, 107.0f);
     g.setFont(monoFont(7.5f));
     g.setColour(juce::Colour(col::dim));
     g.drawText(lastSide ? (lastMono ? "mono input / sidechain" : "main input / sidechain")
@@ -208,6 +239,6 @@ void DistInterleaveEditor::paint(juce::Graphics& g)
                    20, 257, 194, 17, juce::Justification::centred);
     g.setColour(juce::Colour(col::dim));
     g.drawText("1 - 100", 254, 262, 112, 18, juce::Justification::centred);
-    g.drawText("0 - 2x", 392, 262, 112, 18, juce::Justification::centred);
-    g.drawText("dry / wet", 530, 262, 112, 18, juce::Justification::centred);
+    g.drawText("0 - 2x", 578, 262, 112, 18, juce::Justification::centred);
+    g.drawText("dry / wet", 716, 262, 112, 18, juce::Justification::centred);
 }

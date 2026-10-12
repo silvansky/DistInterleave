@@ -35,13 +35,15 @@ private:
     VarispeedLookAndFeel look;
     juce::Component surface;
     juce::ComboBox mode, channels;
-    FineSlider cycles, gain, mix;
+    FineSlider cycles, gain, mix, threshold;
+    juce::TextButton silenceMute {"Mute"}, silenceBypass {"Bypass"};
     juce::Label helpMark, contextHelpLabel;
     juce::Component::SafePointer<juce::Component> hoveredHelp;
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ComboAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     std::unique_ptr<ComboAttachment> modeAttachment, channelsAttachment;
-    std::unique_ptr<SliderAttachment> cyclesAttachment, gainAttachment, mixAttachment;
+    std::unique_ptr<SliderAttachment> cyclesAttachment, gainAttachment, mixAttachment, thresholdAttachment;
+    std::unique_ptr<juce::ParameterAttachment> silenceModeAttachment;
     bool lastMono = false, lastSide = false, lastConnected = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DistInterleaveEditor)
 };

@@ -54,7 +54,7 @@ public:
         status.setFont(vspd::monoFont(8.0f));
         status.setColour(juce::Label::textColourId, juce::Colour(vspd::col::dim));
         status.setText("Hardware inputs only. Enable the channels you need in Audio settings.", juce::dontSendNotification);
-        setSize(660, 400);
+        setSize(editor->getWidth(), editor->getHeight() + 70);
         if (openAudioDevice)
         {
             const auto error = devices.initialiseWithDefaultDevices(2, 2);
@@ -78,8 +78,8 @@ public:
         settings.setBounds(16, 10, 110, 26);
         routing.setBounds(136, 10, 360, 26);
         outputs.setBounds(506, 10, 138, 26);
-        editor->setBounds(0, 44, 660, 330);
-        status.setBounds(16, 374, 628, 22);
+        editor->setBounds(0, 44, getWidth(), getHeight() - 70);
+        status.setBounds(16, getHeight() - 26, getWidth() - 32, 22);
     }
 
 private:

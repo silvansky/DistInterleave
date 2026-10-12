@@ -70,10 +70,15 @@ int main(int argc, char** argv)
                 UInt32 size = 0;
                 check(AudioUnitGetPropertyInfo(unit, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global,
                       0, &size, nullptr), "Parameter list");
-                if (size != 5 * sizeof(AudioUnitParameterID)) return 6;
-                std::array<AudioUnitParameterID, 5> ids {};
+                std::array<AudioUnitParameterID, 7> ids {};
+                if (size != sizeof(ids))
+                {
+                    std::fputs("Expected seven AU parameters\n", stderr);
+                    return 6;
+                }
                 check(AudioUnitGetProperty(unit, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global,
                       0, ids.data(), &size), "Read parameter IDs");
+                int silenceParameters = 0;
                 for (auto id : ids)
                 {
                     AudioUnitParameterInfo info {};
@@ -82,8 +87,20 @@ int main(int argc, char** argv)
                           id, &info, &infoSize), "Read parameter info");
                     if (std::strcmp(info.name, "Mode") == 0)
                         check(AudioUnitSetParameter(unit, id, kAudioUnitScope_Global, 0, 1, 0), "Select sidechain");
+                    // JUCE exposes continuous AU parameters in normalized units:
+                    // -90 dB in the -120..-20 dB range is 0.3.
+                    if (std::strcmp(info.name, "Silence Threshold") == 0
+                        && std::abs(info.defaultValue - 0.3f) < 1.0e-6f)
+                        ++silenceParameters;
+                    if (std::strcmp(info.name, "Silence Mode") == 0 && info.defaultValue == 0)
+                        ++silenceParameters;
                     if ((info.flags & kAudioUnitParameterFlag_CFNameRelease) && info.cfNameString)
                         CFRelease(info.cfNameString);
+                }
+                if (silenceParameters != 2)
+                {
+                    std::fputs("Missing silence parameters or incorrect AU defaults\n", stderr);
+                    return 6;
                 }
                 std::array<std::array<float, 128>, 2> samples {};
                 struct Buffers { UInt32 count; AudioBuffer buffers[2]; } buffers {output, {}};

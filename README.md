@@ -17,6 +17,8 @@ the algorithm description; no CDP source code is copied, translated, or linked.
 | Mode | L/R, In/Sidechain | L/R on stereo; forced In/Sidechain on mono |
 | Channels | Independent, Left, Right | Independent; disabled in L/R |
 | Cycles | 1-100 full cycles per source | 1 |
+| Threshold | -120 to -20 dBFS, silence detection | -90 dBFS |
+| Silence | Mute, Bypass | Mute |
 | Gain | 0-2x, linear post-mix output gain | 1x |
 | Mix | 0-100% wet, linear blend | 100% |
 
@@ -38,8 +40,26 @@ or hard clip in the DSP; output can exceed +/-1. Gain and Mix changes ramp over
 10 ms. Controls support typed values, double-click reset, shift-drag fine adjustment,
 and contextual help in the footer when hovered, without popup tooltips. Hover the
 footer's `?` for sample rate, block size, block duration, version, and build date
-(plus the audio device in the standalone). All five parameters are automatable
+(plus the audio device in the standalone). All seven parameters are automatable
 and saved in plugin state.
+
+The Threshold knob sets when an input counts as silent. In L/R, left and right
+are detected separately. In In/Sidechain, a bus stays active if either of its
+channels reaches the threshold, regardless of the Channels setting. A source
+becomes silent after 50 ms continuously below threshold and becomes active as
+soon as it reaches threshold. This hold prevents ordinary zero crossings from
+triggering silence handling; very slow signals or long quiet passages can still
+trigger it.
+
+The segmented control below Threshold chooses what happens when either source
+is silent. **Mute** silences the entire output. **Bypass** passes the other,
+active source directly to the output, without cycle capture delay. If both are
+silent, both modes mute. These actions override Mix (including 0% wet), and Gain
+still applies to bypassed audio. L/R bypass remains mono; sidechain routing
+preserves the active source's stereo channels, averaging them for mono output.
+When both sources become active again, interleaving restarts from fresh cycles
+with its normal capture delay. Transitions are not crossfaded. Older saved states
+load the new controls at their defaults.
 
 ## Live cycle handling
 
@@ -63,8 +83,10 @@ signals can reach that limit; a two-second segment then serves as a fallback
 cycle. Cycles still counts 1-100 playback cycles before switching sources, including
 at low audio frequencies. Startup and an unavailable next cycle produce wet silence
 until the requested source has a completed cycle.
-An absent/disabled sidechain bus passes the main input through; an enabled but
-silent sidechain is processed as silence. Mode, Channels, layout, and Cycles
+An absent/disabled sidechain bus passes the main input through regardless of the
+silence controls; an enabled but silent sidechain triggers the selected silence
+action. The two-second engine fallback remains in place for above-threshold DC
+and extremely slow cycles. Mode, Channels, layout, Cycles, and source activity
 changes reset capture. The changing, source-dependent delay is part of the effect;
 reported fixed latency is zero and dry audio is undelayed.
 
@@ -157,12 +179,13 @@ cmake --build build --target DistInterleaveShot --parallel 6
 ./build/DistInterleaveShot /tmp/DistInterleave.png
 # Preview mono routing or footer help at a control's design coordinates:
 ./build/DistInterleaveShot /tmp/DistInterleave-mono.png mono
-./build/DistInterleaveShot /tmp/DistInterleave-help.png stereo 636 315
+./build/DistInterleaveShot /tmp/DistInterleave-help.png stereo 822 315
 ```
 
 Tests cover full-cycle concatenation and group sizes, stereo frame preservation,
 zero plateaus, bounded DC/silence behavior, all bus-layout combinations, mono mode
-forcing, host-block independence, unclipped gain, dry mixing, and state round trips.
+forcing, host-block independence, unclipped gain, dry mixing, silence actions and
+recovery, sample-rate-dependent silence hold timing, and new/legacy state loading.
 On macOS, CTest also loads the built AU directly and renders all eight enabled
 sidechain layouts without installing it. This test needs access to macOS's audio
 component services and must run outside restrictive process sandboxes. The standalone
